@@ -68,28 +68,28 @@ def get_all_transactions():
     """Return all transactions stored in the database."""
     connection = get_connection()
 
-    transactions = connection.execute(
-        """
-        SELECT
-            id,
-            account_id,
-            plaid_transaction_id,
-            pending_transaction_id,
-            merchant_name,
-            description,
-            transaction_date,
-            plaid_amount,
-            manual_amount,
-            pending,
-            transaction_type
-        FROM transactions
-        ORDER BY id
-        """
-    ).fetchall()
+    try:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                account_id,
+                plaid_transaction_id,
+                pending_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
+                plaid_amount,
+                manual_amount,
+                pending,
+                transaction_type
+            FROM transactions
+            ORDER BY id
+            """
+        ).fetchall()
 
-    connection.close()
-
-    return transactions
+    finally:
+        connection.close()
 
 
 def get_transaction_by_plaid_id(
@@ -104,7 +104,7 @@ def get_transaction_by_plaid_id(
         connection = get_connection()
 
     try:
-        transaction = connection.execute(
+        return connection.execute(
             """
             SELECT
                 id,
@@ -123,8 +123,6 @@ def get_transaction_by_plaid_id(
             """,
             (plaid_transaction_id,),
         ).fetchone()
-
-        return transaction
 
     finally:
         if owns_connection:
@@ -172,43 +170,56 @@ def update_plaid_transaction(
     plaid_amount,
     pending,
     pending_transaction_id=None,
+    connection=None,
 ):
-    """Update an existing transaction using current Plaid data."""
+    """Update a Plaid transaction, optionally using an existing connection."""
 
-    connection = get_connection()
+    owns_connection = connection is None
 
-    cursor = connection.execute(
-        """
-        UPDATE transactions
-        SET
-            pending_transaction_id = ?,
-            merchant_name = ?,
-            description = ?,
-            transaction_date = ?,
-            plaid_amount = ?,
-            pending = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE plaid_transaction_id = ?
-        """,
-        (
-            pending_transaction_id,
-            merchant_name,
-            description,
-            transaction_date,
-            plaid_amount,
-            int(pending),
-            plaid_transaction_id,
-        ),
-    )
+    if owns_connection:
+        connection = get_connection()
 
-    if cursor.rowcount != 1:
-        connection.close()
-        raise ValueError(
-            f"Plaid transaction {plaid_transaction_id} was not found."
+    try:
+        cursor = connection.execute(
+            """
+            UPDATE transactions
+            SET
+                pending_transaction_id = ?,
+                merchant_name = ?,
+                description = ?,
+                transaction_date = ?,
+                plaid_amount = ?,
+                pending = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE plaid_transaction_id = ?
+            """,
+            (
+                pending_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
+                plaid_amount,
+                int(pending),
+                plaid_transaction_id,
+            ),
         )
 
-    connection.commit()
-    connection.close()
+        if cursor.rowcount != 1:
+            raise ValueError(
+                f"Plaid transaction {plaid_transaction_id} was not found."
+            )
+
+        if owns_connection:
+            connection.commit()
+
+    except Exception:
+        if owns_connection:
+            connection.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            connection.close()
 
 
 def set_manual_amount(transaction_id, manual_amount):
@@ -274,7 +285,7 @@ def reconcile_posted_transaction(
     pending_transaction_id,
     posted_amount,
 ):
-    """Reconcile a posted Plaid transaction with its earlier pending transaction."""
+    """Reconcile a posted transaction with its pending record."""
 
     pending_transaction = get_transaction_by_plaid_id(
         pending_transaction_id
@@ -283,10 +294,8 @@ def reconcile_posted_transaction(
     if pending_transaction is None:
         return False
 
-    transaction_id = pending_transaction[0]
-
     mark_transaction_posted(
-        transaction_id=transaction_id,
+        transaction_id=pending_transaction[0],
         posted_amount=posted_amount,
         plaid_transaction_id=plaid_transaction_id,
     )
@@ -308,9 +317,7 @@ def remove_transaction_by_plaid_id(plaid_transaction_id):
     )
 
     connection.commit()
-
     removed = cursor.rowcount == 1
-
     connection.close()
 
     return removed
