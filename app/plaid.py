@@ -1,7 +1,9 @@
 import os
 from decimal import Decimal, ROUND_HALF_UP
 
+import plaid
 from dotenv import load_dotenv
+from plaid.api import plaid_api
 
 
 VALID_PLAID_ENVIRONMENTS = {
@@ -42,6 +44,33 @@ def get_plaid_config():
         "secret": secret,
         "environment": environment,
     }
+
+
+def create_plaid_client():
+    """Create a configured Plaid API client."""
+
+    config = get_plaid_config()
+
+    if config["environment"] == "sandbox":
+        host = plaid.Environment.Sandbox
+    else:
+        host = plaid.Environment.Production
+
+    configuration = plaid.Configuration(
+        host=host,
+        api_key={
+            "clientId": config["client_id"],
+            "secret": config["secret"],
+        },
+    )
+
+    api_client = plaid.ApiClient(
+        configuration
+    )
+
+    return plaid_api.PlaidApi(
+        api_client
+    )
 
 
 def normalize_plaid_amount(plaid_amount):
