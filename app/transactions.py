@@ -44,9 +44,7 @@ def add_transaction(
     )
 
     connection.commit()
-
     transaction_id = cursor.lastrowid
-
     connection.close()
 
     return transaction_id
@@ -76,37 +74,46 @@ def get_all_transactions():
     ).fetchall()
 
     connection.close()
-
     return transactions
 
 
-def get_transaction_by_plaid_id(plaid_transaction_id):
-    """Return a transaction with the given Plaid transaction ID."""
-    connection = get_connection()
+def get_transaction_by_plaid_id(
+    plaid_transaction_id,
+    connection=None,
+):
+    """Find a transaction, optionally using an existing connection."""
 
-    transaction = connection.execute(
-        """
-        SELECT
-            id,
-            account_id,
-            plaid_transaction_id,
-            pending_transaction_id,
-            merchant_name,
-            description,
-            transaction_date,
-            plaid_amount,
-            manual_amount,
-            pending,
-            transaction_type
-        FROM transactions
-        WHERE plaid_transaction_id = ?
-        """,
-        (plaid_transaction_id,),
-    ).fetchone()
+    owns_connection = connection is None
 
-    connection.close()
+    if owns_connection:
+        connection = get_connection()
 
-    return transaction
+    try:
+        transaction = connection.execute(
+            """
+            SELECT
+                id,
+                account_id,
+                plaid_transaction_id,
+                pending_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
+                plaid_amount,
+                manual_amount,
+                pending,
+                transaction_type
+            FROM transactions
+            WHERE plaid_transaction_id = ?
+            """,
+            (plaid_transaction_id,),
+        ).fetchone()
+
+        return transaction
+
+    finally:
+        if owns_connection:
+            connection.close()
 
 
 def add_plaid_transaction(
@@ -282,9 +289,7 @@ def remove_transaction_by_plaid_id(plaid_transaction_id):
     )
 
     connection.commit()
-
     removed = cursor.rowcount == 1
-
     connection.close()
 
     return removed
