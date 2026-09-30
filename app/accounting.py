@@ -75,7 +75,10 @@ def calculate_remaining_liability(transactions):
         if transaction_type == "purchase":
             liability += effective_money
 
-        elif transaction_type in ("payment", "refund"):
+        elif (
+            transaction_type in ("payment", "refund")
+            and not pending
+        ):
             liability -= effective_money
 
     if liability < Decimal("0.00"):
