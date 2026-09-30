@@ -1,5 +1,16 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from app.accounts import get_account_balance
 from app.transactions import get_all_transactions
+
+
+def to_money(value):
+    """Convert a value to an exact two-decimal money value."""
+
+    return Decimal(str(value)).quantize(
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
+    )
 
 
 def get_effective_amount(
@@ -10,15 +21,17 @@ def get_effective_amount(
     """Return the amount that should currently count toward spending."""
 
     if pending and manual_amount is not None:
-        return manual_amount
+        amount = to_money(manual_amount)
+    else:
+        amount = to_money(plaid_amount)
 
-    return plaid_amount
+    return float(amount)
 
 
 def calculate_total_spending(transactions):
     """Calculate total effective spending from transaction rows."""
 
-    total = 0.0
+    total = Decimal("0.00")
 
     for transaction in transactions:
         plaid_amount = transaction[7]
@@ -35,15 +48,15 @@ def calculate_total_spending(transactions):
             pending=pending,
         )
 
-        total += effective_amount
+        total += to_money(effective_amount)
 
-    return round(total, 2)
+    return float(to_money(total))
 
 
 def calculate_remaining_liability(transactions):
     """Calculate remaining credit-card liability from transactions."""
 
-    liability = 0.0
+    liability = Decimal("0.00")
 
     for transaction in transactions:
         plaid_amount = transaction[7]
@@ -57,16 +70,18 @@ def calculate_remaining_liability(transactions):
             pending=pending,
         )
 
+        effective_money = to_money(effective_amount)
+
         if transaction_type == "purchase":
-            liability += effective_amount
+            liability += effective_money
 
         elif transaction_type in ("payment", "refund"):
-            liability -= effective_amount
+            liability -= effective_money
 
-    if liability < 0:
-        liability = 0.0
+    if liability < Decimal("0.00"):
+        liability = Decimal("0.00")
 
-    return round(liability, 2)
+    return float(to_money(liability))
 
 
 def calculate_transfer_needed(
@@ -75,12 +90,15 @@ def calculate_transfer_needed(
 ):
     """Calculate how much money still needs to be moved into AP."""
 
-    transfer_needed = remaining_liability - ap_balance
+    liability = to_money(remaining_liability)
+    funded = to_money(ap_balance)
 
-    if transfer_needed < 0:
-        transfer_needed = 0.0
+    transfer_needed = liability - funded
 
-    return round(transfer_needed, 2)
+    if transfer_needed < Decimal("0.00"):
+        transfer_needed = Decimal("0.00")
+
+    return float(to_money(transfer_needed))
 
 
 def build_credit_card_control_summary(
@@ -98,19 +116,20 @@ def build_credit_card_control_summary(
         ap_balance=ap_balance,
     )
 
+    liability_money = to_money(remaining_liability)
+    ap_money = to_money(ap_balance)
+
     currently_funded = min(
-        remaining_liability,
-        ap_balance,
+        liability_money,
+        ap_money,
     )
 
     return {
-        "remaining_liability": round(
-            remaining_liability,
-            2,
+        "remaining_liability": float(
+            to_money(liability_money)
         ),
-        "currently_funded": round(
-            currently_funded,
-            2,
+        "currently_funded": float(
+            to_money(currently_funded)
         ),
         "still_needs_funding": transfer_needed,
         "transfer_to_ap": transfer_needed,
@@ -149,9 +168,8 @@ def build_credit_card_control_summary_from_database(
                 "The spending account does not have a current balance."
             )
 
-        summary["available_to_spend"] = round(
-            available_to_spend,
-            2,
+        summary["available_to_spend"] = float(
+            to_money(available_to_spend)
         )
 
     return summary
