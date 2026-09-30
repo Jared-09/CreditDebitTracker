@@ -77,3 +77,37 @@ def calculate_transfer_needed(
         transfer_needed = 0.0
 
     return round(transfer_needed, 2)
+
+
+def build_credit_card_control_summary(
+    transactions,
+    ap_balance,
+):
+    """Build the core Credit Card Control funding summary."""
+
+    remaining_liability = calculate_remaining_liability(
+        transactions
+    )
+
+    transfer_needed = calculate_transfer_needed(
+        remaining_liability=remaining_liability,
+        ap_balance=ap_balance,
+    )
+
+    currently_funded = min(
+        remaining_liability,
+        ap_balance,
+    )
+
+    return {
+        "remaining_liability": round(
+            remaining_liability,
+            2,
+        ),
+        "currently_funded": round(
+            currently_funded,
+            2,
+        ),
+        "still_needs_funding": transfer_needed,
+        "transfer_to_ap": transfer_needed,
+    }
