@@ -34,3 +34,17 @@ def calculate_total_spending(transactions):
         total += effective_amount
 
     return round(total, 2)
+
+
+def calculate_transfer_needed(
+    remaining_liability,
+    ap_balance,
+):
+    """Calculate how much money still needs to be moved into AP."""
+
+    transfer_needed = remaining_liability - ap_balance
+
+    if transfer_needed < 0:
+        transfer_needed = 0.0
+
+    return round(transfer_needed, 2)
