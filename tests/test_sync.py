@@ -74,3 +74,47 @@ def test_process_same_transaction_twice_does_not_duplicate(
     assert transaction[2] == "sync_duplicate_001"
     assert transaction[7] == 25.00
     assert bool(transaction[9]) is True
+
+
+def test_process_pending_transaction_becoming_posted(
+    test_database,
+):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    pending_transaction_id = process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="sync_restaurant_pending_001",
+        merchant_name="Test Restaurant",
+        description="Dinner",
+        transaction_date="2026-09-29",
+        plaid_amount=60.00,
+        pending=True,
+    )
+
+    posted_transaction_id = process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="sync_restaurant_posted_001",
+        pending_transaction_id="sync_restaurant_pending_001",
+        merchant_name="Test Restaurant",
+        description="Dinner",
+        transaction_date="2026-09-29",
+        plaid_amount=72.00,
+        pending=False,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+
+    transaction = transactions[0]
+
+    assert posted_transaction_id == pending_transaction_id
+    assert transaction[0] == pending_transaction_id
+    assert transaction[2] == "sync_restaurant_posted_001"
+    assert transaction[7] == 72.00
+    assert bool(transaction[9]) is False
