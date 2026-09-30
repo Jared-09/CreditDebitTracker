@@ -38,6 +38,7 @@ def process_plaid_transaction(
             merchant_name=merchant_name,
             description=description,
             transaction_date=transaction_date,
+            transaction_type=transaction_type,
             connection=connection,
         )
 

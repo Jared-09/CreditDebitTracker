@@ -320,9 +320,13 @@ def mark_transaction_posted(
     merchant_name=None,
     description=None,
     transaction_date=None,
+    transaction_type=None,
     connection=None,
 ):
     """Mark a transaction posted and store its final Plaid details."""
+
+    if transaction_type is not None:
+        validate_transaction_type(transaction_type)
 
     owns_connection = connection is None
 
@@ -351,6 +355,10 @@ def mark_transaction_posted(
                     ?,
                     transaction_date
                 ),
+                transaction_type = COALESCE(
+                    ?,
+                    transaction_type
+                ),
                 pending = 0,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -361,6 +369,7 @@ def mark_transaction_posted(
                 merchant_name,
                 description,
                 transaction_date,
+                transaction_type,
                 transaction_id,
             ),
         )
@@ -390,9 +399,13 @@ def reconcile_posted_transaction(
     merchant_name=None,
     description=None,
     transaction_date=None,
+    transaction_type=None,
     connection=None,
 ):
     """Reconcile a posted transaction with its pending record."""
+
+    if transaction_type is not None:
+        validate_transaction_type(transaction_type)
 
     pending_transaction = get_transaction_by_plaid_id(
         pending_transaction_id,
@@ -409,6 +422,7 @@ def reconcile_posted_transaction(
         merchant_name=merchant_name,
         description=description,
         transaction_date=transaction_date,
+        transaction_type=transaction_type,
         connection=connection,
     )
 
