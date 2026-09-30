@@ -2,6 +2,7 @@ from app.transactions import (
     add_plaid_transaction,
     get_transaction_by_plaid_id,
     reconcile_posted_transaction,
+    update_plaid_transaction,
 )
 
 
@@ -15,7 +16,7 @@ def process_plaid_transaction(
     pending,
     pending_transaction_id=None,
 ):
-    """Process one transaction received from Plaid."""
+    """Process one added transaction received from Plaid."""
 
     existing_transaction = get_transaction_by_plaid_id(
         plaid_transaction_id
@@ -48,3 +49,31 @@ def process_plaid_transaction(
         pending=pending,
         pending_transaction_id=pending_transaction_id,
     )
+
+
+def process_modified_plaid_transaction(
+    plaid_transaction_id,
+    merchant_name,
+    description,
+    transaction_date,
+    plaid_amount,
+    pending,
+    pending_transaction_id=None,
+):
+    """Process one modified transaction received from Plaid."""
+
+    update_plaid_transaction(
+        plaid_transaction_id=plaid_transaction_id,
+        merchant_name=merchant_name,
+        description=description,
+        transaction_date=transaction_date,
+        plaid_amount=plaid_amount,
+        pending=pending,
+        pending_transaction_id=pending_transaction_id,
+    )
+
+    transaction = get_transaction_by_plaid_id(
+        plaid_transaction_id
+    )
+
+    return transaction[0]

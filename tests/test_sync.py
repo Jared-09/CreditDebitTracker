@@ -1,5 +1,8 @@
 from app.accounts import add_account
-from app.sync import process_plaid_transaction
+from app.sync import (
+    process_modified_plaid_transaction,
+    process_plaid_transaction,
+)
 from app.transactions import get_all_transactions
 
 
@@ -151,4 +154,45 @@ def test_process_posted_transaction_when_pending_is_missing(
     assert transaction[2] == "sync_missing_posted_001"
     assert transaction[3] == "sync_missing_pending_001"
     assert transaction[7] == 42.50
+    assert bool(transaction[9]) is False
+
+
+def test_process_modified_plaid_transaction(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    original_transaction_id = process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="sync_modified_001",
+        merchant_name="Test Store",
+        description="Purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=25.00,
+        pending=False,
+    )
+
+    modified_transaction_id = process_modified_plaid_transaction(
+        plaid_transaction_id="sync_modified_001",
+        merchant_name="Test Store",
+        description="Updated purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=27.50,
+        pending=False,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+
+    transaction = transactions[0]
+
+    assert modified_transaction_id == original_transaction_id
+    assert transaction[0] == original_transaction_id
+    assert transaction[2] == "sync_modified_001"
+    assert transaction[5] == "Updated purchase"
+    assert transaction[7] == 27.50
     assert bool(transaction[9]) is False
