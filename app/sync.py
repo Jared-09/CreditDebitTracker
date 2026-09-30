@@ -88,14 +88,36 @@ def process_removed_plaid_transaction(plaid_transaction_id):
     )
 
 
-def process_plaid_sync_batch(account_id, added):
-    """Process the added transactions from one Plaid sync batch."""
+def process_plaid_sync_batch(
+    account_id,
+    added,
+    modified=None,
+):
+    """Process added and modified transactions from one Plaid sync batch."""
+
+    if modified is None:
+        modified = []
 
     transaction_ids = []
 
     for transaction in added:
         transaction_id = process_plaid_transaction(
             account_id=account_id,
+            plaid_transaction_id=transaction["plaid_transaction_id"],
+            merchant_name=transaction["merchant_name"],
+            description=transaction["description"],
+            transaction_date=transaction["transaction_date"],
+            plaid_amount=transaction["plaid_amount"],
+            pending=transaction["pending"],
+            pending_transaction_id=transaction.get(
+                "pending_transaction_id"
+            ),
+        )
+
+        transaction_ids.append(transaction_id)
+
+    for transaction in modified:
+        transaction_id = process_modified_plaid_transaction(
             plaid_transaction_id=transaction["plaid_transaction_id"],
             merchant_name=transaction["merchant_name"],
             description=transaction["description"],

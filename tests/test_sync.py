@@ -289,3 +289,77 @@ def test_process_plaid_sync_batch_with_added_transactions(
     assert transactions[2][2] == "batch_added_003"
     assert transactions[2][7] == 25.00
     assert bool(transactions[2][9]) is False
+
+
+def test_process_plaid_sync_batch_with_added_and_modified(
+    test_database,
+):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    existing_transaction_id = process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="batch_existing_001",
+        merchant_name="Test Store",
+        description="Purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=25.00,
+        pending=False,
+    )
+
+    added = [
+        {
+            "plaid_transaction_id": "batch_new_001",
+            "merchant_name": "Test Gas Station",
+            "description": "Gas",
+            "transaction_date": "2026-09-29",
+            "plaid_amount": 40.00,
+            "pending": True,
+        },
+    ]
+
+    modified = [
+        {
+            "plaid_transaction_id": "batch_existing_001",
+            "merchant_name": "Test Store",
+            "description": "Updated purchase",
+            "transaction_date": "2026-09-29",
+            "plaid_amount": 27.50,
+            "pending": False,
+        },
+    ]
+
+    transaction_ids = process_plaid_sync_batch(
+        account_id=account_id,
+        added=added,
+        modified=modified,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transaction_ids) == 2
+    assert len(transactions) == 2
+
+    existing_transaction = next(
+        transaction
+        for transaction in transactions
+        if transaction[2] == "batch_existing_001"
+    )
+
+    new_transaction = next(
+        transaction
+        for transaction in transactions
+        if transaction[2] == "batch_new_001"
+    )
+
+    assert existing_transaction[0] == existing_transaction_id
+    assert existing_transaction[5] == "Updated purchase"
+    assert existing_transaction[7] == 27.50
+    assert bool(existing_transaction[9]) is False
+
+    assert new_transaction[7] == 40.00
+    assert bool(new_transaction[9]) is True
