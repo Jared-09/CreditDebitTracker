@@ -11,43 +11,57 @@ def add_transaction(
     transaction_type="purchase",
     plaid_transaction_id=None,
     pending_transaction_id=None,
+    connection=None,
 ):
-    """Add a transaction to the database."""
-    connection = get_connection()
+    """Add a transaction, optionally using an existing connection."""
 
-    cursor = connection.execute(
-        """
-        INSERT INTO transactions (
-            account_id,
-            plaid_transaction_id,
-            pending_transaction_id,
-            merchant_name,
-            description,
-            transaction_date,
-            plaid_amount,
-            pending,
-            transaction_type
+    owns_connection = connection is None
+
+    if owns_connection:
+        connection = get_connection()
+
+    try:
+        cursor = connection.execute(
+            """
+            INSERT INTO transactions (
+                account_id,
+                plaid_transaction_id,
+                pending_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
+                plaid_amount,
+                pending,
+                transaction_type
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                account_id,
+                plaid_transaction_id,
+                pending_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
+                plaid_amount,
+                int(pending),
+                transaction_type,
+            ),
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            account_id,
-            plaid_transaction_id,
-            pending_transaction_id,
-            merchant_name,
-            description,
-            transaction_date,
-            plaid_amount,
-            int(pending),
-            transaction_type,
-        ),
-    )
 
-    connection.commit()
-    transaction_id = cursor.lastrowid
-    connection.close()
+        if owns_connection:
+            connection.commit()
 
-    return transaction_id
+        return cursor.lastrowid
+
+    except Exception:
+        if owns_connection:
+            connection.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            connection.close()
 
 
 def get_all_transactions():
@@ -74,6 +88,7 @@ def get_all_transactions():
     ).fetchall()
 
     connection.close()
+
     return transactions
 
 
@@ -159,6 +174,7 @@ def update_plaid_transaction(
     pending_transaction_id=None,
 ):
     """Update an existing transaction using current Plaid data."""
+
     connection = get_connection()
 
     cursor = connection.execute(
@@ -197,6 +213,7 @@ def update_plaid_transaction(
 
 def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
+
     connection = get_connection()
 
     cursor = connection.execute(
@@ -224,6 +241,7 @@ def mark_transaction_posted(
     plaid_transaction_id=None,
 ):
     """Update a pending transaction when its final posted amount becomes known."""
+
     connection = get_connection()
 
     cursor = connection.execute(
@@ -278,6 +296,7 @@ def reconcile_posted_transaction(
 
 def remove_transaction_by_plaid_id(plaid_transaction_id):
     """Remove a transaction using its Plaid transaction ID."""
+
     connection = get_connection()
 
     cursor = connection.execute(
@@ -289,7 +308,9 @@ def remove_transaction_by_plaid_id(plaid_transaction_id):
     )
 
     connection.commit()
+
     removed = cursor.rowcount == 1
+
     connection.close()
 
     return removed
