@@ -51,6 +51,7 @@ def add_transaction(
 
     return transaction_id
 
+
 def get_all_transactions():
     """Return all transactions stored in the database."""
     connection = get_connection()
@@ -78,6 +79,7 @@ def get_all_transactions():
 
     return transactions
 
+
 def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
     connection = get_connection()
@@ -92,6 +94,39 @@ def set_manual_amount(transaction_id, manual_amount):
         """,
         (manual_amount, transaction_id),
     )
+
+    connection.commit()
+    connection.close()
+
+
+def mark_transaction_posted(
+    transaction_id,
+    posted_amount,
+    plaid_transaction_id=None,
+):
+    """Update a pending transaction when its final posted amount becomes known."""
+    connection = get_connection()
+
+    cursor = connection.execute(
+        """
+        UPDATE transactions
+        SET
+            plaid_amount = ?,
+            plaid_transaction_id = COALESCE(?, plaid_transaction_id),
+            pending = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (
+            posted_amount,
+            plaid_transaction_id,
+            transaction_id,
+        ),
+    )
+
+    if cursor.rowcount != 1:
+        connection.close()
+        raise ValueError(f"Transaction {transaction_id} was not found.")
 
     connection.commit()
     connection.close()

@@ -1,10 +1,15 @@
 from app.database import initialize_database
-from app.transactions import get_all_transactions
+from app.transactions import mark_transaction_posted, get_all_transactions
 from app.accounting import get_effective_amount
 
 
 def main():
     initialize_database()
+
+    mark_transaction_posted(
+        transaction_id=1,
+        posted_amount=48.10,
+    )
 
     transactions = get_all_transactions()
 
