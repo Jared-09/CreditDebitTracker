@@ -49,13 +49,14 @@ def initialize_database():
                 last_four TEXT,
                 plaid_account_id TEXT UNIQUE,
                 active INTEGER NOT NULL DEFAULT 1,
-                current_balance REAL
+                current_balance REAL,
+                account_role TEXT NOT NULL DEFAULT 'other'
             )
             """
         )
 
-        # Existing databases created before current_balance was added
-        # need a small schema upgrade.
+        # Existing databases created before newer account fields
+        # were added need simple schema upgrades.
         account_columns = connection.execute(
             "PRAGMA table_info(accounts)"
         ).fetchall()
@@ -70,6 +71,15 @@ def initialize_database():
                 """
                 ALTER TABLE accounts
                 ADD COLUMN current_balance REAL
+                """
+            )
+
+        if "account_role" not in column_names:
+            connection.execute(
+                """
+                ALTER TABLE accounts
+                ADD COLUMN account_role TEXT
+                NOT NULL DEFAULT 'other'
                 """
             )
 

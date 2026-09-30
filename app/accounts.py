@@ -1,18 +1,58 @@
 from app.database import get_connection
 
 
+VALID_ACCOUNT_ROLES = {
+    "credit_card",
+    "funding",
+    "spending",
+    "other",
+}
+
+UNIQUE_ACCOUNT_ROLES = {
+    "funding",
+    "spending",
+}
+
+
+def validate_account_role(account_role):
+    """Reject account roles the application does not understand."""
+
+    if account_role not in VALID_ACCOUNT_ROLES:
+        raise ValueError(
+            f"Invalid account role: {account_role}"
+        )
+
+
 def add_account(
     name,
     institution,
     account_type,
     last_four=None,
     current_balance=None,
+    account_role="other",
 ):
     """Add an account to the database."""
+
+    validate_account_role(account_role)
 
     connection = get_connection()
 
     try:
+        if account_role in UNIQUE_ACCOUNT_ROLES:
+            existing_account = connection.execute(
+                """
+                SELECT id
+                FROM accounts
+                WHERE account_role = ?
+                """,
+                (account_role,),
+            ).fetchone()
+
+            if existing_account is not None:
+                raise ValueError(
+                    f"Account role {account_role} is already assigned"
+                )
+
         cursor = connection.execute(
             """
             INSERT INTO accounts (
@@ -20,9 +60,10 @@ def add_account(
                 institution,
                 account_type,
                 last_four,
-                current_balance
+                current_balance,
+                account_role
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 name,
@@ -30,6 +71,7 @@ def add_account(
                 account_type,
                 last_four,
                 current_balance,
+                account_role,
             ),
         )
 
@@ -60,11 +102,43 @@ def get_all_accounts():
                 account_type,
                 last_four,
                 active,
-                current_balance
+                current_balance,
+                account_role
             FROM accounts
             ORDER BY id
             """
         ).fetchall()
+
+    finally:
+        connection.close()
+
+
+def get_account_by_role(account_role):
+    """Return the account assigned to a specific role."""
+
+    validate_account_role(account_role)
+
+    connection = get_connection()
+
+    try:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                name,
+                institution,
+                account_type,
+                last_four,
+                active,
+                current_balance,
+                account_role
+            FROM accounts
+            WHERE account_role = ?
+            ORDER BY id
+            LIMIT 1
+            """,
+            (account_role,),
+        ).fetchone()
 
     finally:
         connection.close()

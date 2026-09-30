@@ -1,6 +1,9 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-from app.accounts import get_account_balance
+from app.accounts import (
+    get_account_balance,
+    get_account_by_role,
+)
 from app.transactions import get_credit_card_transactions
 
 
@@ -182,3 +185,30 @@ def build_credit_card_control_summary_from_database(
         )
 
     return summary
+
+
+def build_credit_card_control_summary_from_roles():
+    """Build the control summary using assigned account roles."""
+
+    funding_account = get_account_by_role(
+        "funding"
+    )
+
+    if funding_account is None:
+        raise ValueError(
+            "No funding account is configured."
+        )
+
+    spending_account = get_account_by_role(
+        "spending"
+    )
+
+    if spending_account is None:
+        raise ValueError(
+            "No spending account is configured."
+        )
+
+    return build_credit_card_control_summary_from_database(
+        ap_account_id=funding_account[0],
+        spending_account_id=spending_account[0],
+    )
