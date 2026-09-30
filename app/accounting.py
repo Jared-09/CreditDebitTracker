@@ -93,6 +93,9 @@ def calculate_transfer_needed(
     liability = to_money(remaining_liability)
     funded = to_money(ap_balance)
 
+    if funded < Decimal("0.00"):
+        funded = Decimal("0.00")
+
     transfer_needed = liability - funded
 
     if transfer_needed < Decimal("0.00"):
@@ -118,6 +121,9 @@ def build_credit_card_control_summary(
 
     liability_money = to_money(remaining_liability)
     ap_money = to_money(ap_balance)
+
+    if ap_money < Decimal("0.00"):
+        ap_money = Decimal("0.00")
 
     currently_funded = min(
         liability_money,
