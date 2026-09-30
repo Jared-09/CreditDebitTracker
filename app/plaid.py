@@ -1,4 +1,47 @@
+import os
 from decimal import Decimal, ROUND_HALF_UP
+
+from dotenv import load_dotenv
+
+
+VALID_PLAID_ENVIRONMENTS = {
+    "sandbox",
+    "production",
+}
+
+
+def get_plaid_config():
+    """Load and validate Plaid configuration."""
+
+    load_dotenv()
+
+    client_id = os.getenv("PLAID_CLIENT_ID")
+    secret = os.getenv("PLAID_SECRET")
+    environment = os.getenv(
+        "PLAID_ENV",
+        "sandbox",
+    ).lower()
+
+    if not client_id:
+        raise ValueError(
+            "PLAID_CLIENT_ID is not configured."
+        )
+
+    if not secret:
+        raise ValueError(
+            "PLAID_SECRET is not configured."
+        )
+
+    if environment not in VALID_PLAID_ENVIRONMENTS:
+        raise ValueError(
+            f"Invalid PLAID_ENV: {environment}"
+        )
+
+    return {
+        "client_id": client_id,
+        "secret": secret,
+        "environment": environment,
+    }
 
 
 def normalize_plaid_amount(plaid_amount):
