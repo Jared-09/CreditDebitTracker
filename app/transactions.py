@@ -163,3 +163,28 @@ def mark_transaction_posted(
 
     connection.commit()
     connection.close()
+
+
+def reconcile_posted_transaction(
+    plaid_transaction_id,
+    pending_transaction_id,
+    posted_amount,
+):
+    """Reconcile a posted Plaid transaction with its earlier pending transaction."""
+
+    pending_transaction = get_transaction_by_plaid_id(
+        pending_transaction_id
+    )
+
+    if pending_transaction is None:
+        return False
+
+    transaction_id = pending_transaction[0]
+
+    mark_transaction_posted(
+        transaction_id=transaction_id,
+        posted_amount=posted_amount,
+        plaid_transaction_id=plaid_transaction_id,
+    )
+
+    return True

@@ -5,6 +5,7 @@ from app.transactions import (
     get_all_transactions,
     get_transaction_by_plaid_id,
     mark_transaction_posted,
+    reconcile_posted_transaction,
     set_manual_amount,
 )
 
@@ -107,3 +108,40 @@ def test_get_transaction_by_plaid_id(test_database):
     )
 
     assert missing_transaction is None
+
+
+def test_reconcile_pending_restaurant_transaction(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    add_transaction(
+        account_id=account_id,
+        merchant_name="Test Restaurant",
+        description="Dinner",
+        transaction_date="2026-09-29",
+        plaid_amount=60.00,
+        pending=True,
+        plaid_transaction_id="pending_restaurant_001",
+    )
+
+    reconciled = reconcile_posted_transaction(
+        plaid_transaction_id="posted_restaurant_001",
+        pending_transaction_id="pending_restaurant_001",
+        posted_amount=72.00,
+    )
+
+    assert reconciled is True
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+
+    transaction = transactions[0]
+
+    assert transaction[2] == "posted_restaurant_001"
+    assert transaction[7] == 72.00
+    assert bool(transaction[9]) is False
