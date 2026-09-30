@@ -36,6 +36,35 @@ def calculate_total_spending(transactions):
     return round(total, 2)
 
 
+def calculate_remaining_liability(transactions):
+    """Calculate remaining credit-card liability from transactions."""
+
+    liability = 0.0
+
+    for transaction in transactions:
+        plaid_amount = transaction[7]
+        manual_amount = transaction[8]
+        pending = bool(transaction[9])
+        transaction_type = transaction[10]
+
+        effective_amount = get_effective_amount(
+            plaid_amount=plaid_amount,
+            manual_amount=manual_amount,
+            pending=pending,
+        )
+
+        if transaction_type == "purchase":
+            liability += effective_amount
+
+        elif transaction_type in ("payment", "refund"):
+            liability -= effective_amount
+
+    if liability < 0:
+        liability = 0.0
+
+    return round(liability, 2)
+
+
 def calculate_transfer_needed(
     remaining_liability,
     ap_balance,
