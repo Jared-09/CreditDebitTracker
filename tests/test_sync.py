@@ -1,6 +1,7 @@
 from app.accounts import add_account
 from app.sync import (
     process_modified_plaid_transaction,
+    process_plaid_sync_batch,
     process_plaid_transaction,
     process_removed_plaid_transaction,
 )
@@ -228,3 +229,63 @@ def test_process_removed_plaid_transaction(test_database):
 
     assert removed is True
     assert get_all_transactions() == []
+
+
+def test_process_plaid_sync_batch_with_added_transactions(
+    test_database,
+):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    added = [
+        {
+            "plaid_transaction_id": "batch_added_001",
+            "merchant_name": "Test Restaurant",
+            "description": "Lunch",
+            "transaction_date": "2026-09-29",
+            "plaid_amount": 12.00,
+            "pending": False,
+        },
+        {
+            "plaid_transaction_id": "batch_added_002",
+            "merchant_name": "Test Gas Station",
+            "description": "Gas",
+            "transaction_date": "2026-09-29",
+            "plaid_amount": 40.00,
+            "pending": True,
+        },
+        {
+            "plaid_transaction_id": "batch_added_003",
+            "merchant_name": "Test Store",
+            "description": "Purchase",
+            "transaction_date": "2026-09-29",
+            "plaid_amount": 25.00,
+            "pending": False,
+        },
+    ]
+
+    transaction_ids = process_plaid_sync_batch(
+        account_id=account_id,
+        added=added,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transaction_ids) == 3
+    assert len(transactions) == 3
+
+    assert transactions[0][2] == "batch_added_001"
+    assert transactions[0][7] == 12.00
+    assert bool(transactions[0][9]) is False
+
+    assert transactions[1][2] == "batch_added_002"
+    assert transactions[1][7] == 40.00
+    assert bool(transactions[1][9]) is True
+
+    assert transactions[2][2] == "batch_added_003"
+    assert transactions[2][7] == 25.00
+    assert bool(transactions[2][9]) is False
