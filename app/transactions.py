@@ -140,11 +140,13 @@ def add_plaid_transaction(
     pending=False,
     transaction_type="purchase",
     pending_transaction_id=None,
+    connection=None,
 ):
     """Add a Plaid transaction only if it is not already stored."""
 
     existing_transaction = get_transaction_by_plaid_id(
-        plaid_transaction_id
+        plaid_transaction_id,
+        connection=connection,
     )
 
     if existing_transaction is not None:
@@ -160,6 +162,7 @@ def add_plaid_transaction(
         transaction_type=transaction_type,
         plaid_transaction_id=plaid_transaction_id,
         pending_transaction_id=pending_transaction_id,
+        connection=connection,
     )
 
 
@@ -241,7 +244,9 @@ def set_manual_amount(transaction_id, manual_amount):
 
     if cursor.rowcount != 1:
         connection.close()
-        raise ValueError(f"Transaction {transaction_id} was not found.")
+        raise ValueError(
+            f"Transaction {transaction_id} was not found."
+        )
 
     connection.commit()
     connection.close()
