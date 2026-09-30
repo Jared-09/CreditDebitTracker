@@ -109,6 +109,39 @@ def get_transaction_by_plaid_id(plaid_transaction_id):
     return transaction
 
 
+def add_plaid_transaction(
+    account_id,
+    plaid_transaction_id,
+    merchant_name,
+    description,
+    transaction_date,
+    plaid_amount,
+    pending=False,
+    transaction_type="purchase",
+    pending_transaction_id=None,
+):
+    """Add a Plaid transaction only if it is not already stored."""
+
+    existing_transaction = get_transaction_by_plaid_id(
+        plaid_transaction_id
+    )
+
+    if existing_transaction is not None:
+        return existing_transaction[0]
+
+    return add_transaction(
+        account_id=account_id,
+        merchant_name=merchant_name,
+        description=description,
+        transaction_date=transaction_date,
+        plaid_amount=plaid_amount,
+        pending=pending,
+        transaction_type=transaction_type,
+        plaid_transaction_id=plaid_transaction_id,
+        pending_transaction_id=pending_transaction_id,
+    )
+
+
 def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
     connection = get_connection()

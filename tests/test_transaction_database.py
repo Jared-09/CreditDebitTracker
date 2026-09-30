@@ -1,6 +1,7 @@
 from app.accounting import get_effective_amount
 from app.accounts import add_account
 from app.transactions import (
+    add_plaid_transaction,
     add_transaction,
     get_all_transactions,
     get_transaction_by_plaid_id,
@@ -238,3 +239,39 @@ def test_reconcile_pending_transaction_with_lower_posted_amount(test_database):
     assert transaction[7] == 85.00
     assert bool(transaction[9]) is False
     assert posted_effective_amount == 85.00
+
+
+def test_duplicate_plaid_transaction_is_not_added_twice(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    first_transaction_id = add_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="duplicate_test_001",
+        merchant_name="Test Store",
+        description="Test purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=25.00,
+        pending=False,
+    )
+
+    second_transaction_id = add_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="duplicate_test_001",
+        merchant_name="Test Store",
+        description="Test purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=25.00,
+        pending=False,
+    )
+
+    transactions = get_all_transactions()
+
+    assert first_transaction_id == second_transaction_id
+    assert len(transactions) == 1
+    assert transactions[0][2] == "duplicate_test_001"
+    assert transactions[0][7] == 25.00
