@@ -1,18 +1,28 @@
-from app.database import get_connection, initialize_database
+from app.database import initialize_database
+from app.transactions import get_all_transactions
+from app.accounting import get_effective_amount
 
 
 def main():
     initialize_database()
 
-    connection = get_connection()
+    transactions = get_all_transactions()
 
-    tables = connection.execute(
-        "SELECT name FROM sqlite_master WHERE type = 'table'"
-    ).fetchall()
+    for transaction in transactions:
+        plaid_amount = transaction[7]
+        manual_amount = transaction[8]
+        pending = transaction[9]
 
-    connection.close()
+        effective_amount = get_effective_amount(
+            plaid_amount,
+            manual_amount,
+            pending,
+        )
 
-    print("Database tables:", tables)
+        print("Plaid amount:", plaid_amount)
+        print("Manual amount:", manual_amount)
+        print("Pending:", bool(pending))
+        print("Effective amount:", effective_amount)
 
 
 if __name__ == "__main__":
