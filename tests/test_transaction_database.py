@@ -6,6 +6,7 @@ from app.transactions import (
     get_transaction_by_plaid_id,
     mark_transaction_posted,
     reconcile_posted_transaction,
+    remove_transaction_by_plaid_id,
     set_manual_amount,
 )
 
@@ -145,3 +146,41 @@ def test_reconcile_pending_restaurant_transaction(test_database):
     assert transaction[2] == "posted_restaurant_001"
     assert transaction[7] == 72.00
     assert bool(transaction[9]) is False
+
+
+def test_remove_cancelled_pending_transaction(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    add_transaction(
+        account_id=account_id,
+        merchant_name="Test Hotel",
+        description="Authorization hold",
+        transaction_date="2026-09-29",
+        plaid_amount=100.00,
+        pending=True,
+        plaid_transaction_id="pending_cancelled_001",
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+    assert transactions[0][7] == 100.00
+    assert bool(transactions[0][9]) is True
+
+    removed = remove_transaction_by_plaid_id(
+        "pending_cancelled_001"
+    )
+
+    assert removed is True
+    assert get_all_transactions() == []
+
+    removed_again = remove_transaction_by_plaid_id(
+        "pending_cancelled_001"
+    )
+
+    assert removed_again is False

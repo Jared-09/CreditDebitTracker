@@ -188,3 +188,24 @@ def reconcile_posted_transaction(
     )
 
     return True
+
+
+def remove_transaction_by_plaid_id(plaid_transaction_id):
+    """Remove a transaction using its Plaid transaction ID."""
+    connection = get_connection()
+
+    cursor = connection.execute(
+        """
+        DELETE FROM transactions
+        WHERE plaid_transaction_id = ?
+        """,
+        (plaid_transaction_id,),
+    )
+
+    connection.commit()
+
+    removed = cursor.rowcount == 1
+
+    connection.close()
+
+    return removed
