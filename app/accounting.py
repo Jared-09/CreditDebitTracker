@@ -119,8 +119,9 @@ def build_credit_card_control_summary(
 
 def build_credit_card_control_summary_from_database(
     ap_account_id,
+    spending_account_id=None,
 ):
-    """Build the funding summary using stored database values."""
+    """Build the control summary using stored database values."""
 
     transactions = get_all_transactions()
 
@@ -133,7 +134,24 @@ def build_credit_card_control_summary_from_database(
             "The AP account does not have a current balance."
         )
 
-    return build_credit_card_control_summary(
+    summary = build_credit_card_control_summary(
         transactions=transactions,
         ap_balance=ap_balance,
     )
+
+    if spending_account_id is not None:
+        available_to_spend = get_account_balance(
+            spending_account_id
+        )
+
+        if available_to_spend is None:
+            raise ValueError(
+                "The spending account does not have a current balance."
+            )
+
+        summary["available_to_spend"] = round(
+            available_to_spend,
+            2,
+        )
+
+    return summary
