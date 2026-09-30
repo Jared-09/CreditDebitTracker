@@ -93,6 +93,38 @@ def get_all_transactions():
         connection.close()
 
 
+def get_credit_card_transactions():
+    """Return transactions belonging only to credit-card accounts."""
+
+    connection = get_connection()
+
+    try:
+        return connection.execute(
+            """
+            SELECT
+                transactions.id,
+                transactions.account_id,
+                transactions.plaid_transaction_id,
+                transactions.pending_transaction_id,
+                transactions.merchant_name,
+                transactions.description,
+                transactions.transaction_date,
+                transactions.plaid_amount,
+                transactions.manual_amount,
+                transactions.pending,
+                transactions.transaction_type
+            FROM transactions
+            JOIN accounts
+                ON transactions.account_id = accounts.id
+            WHERE accounts.account_type = 'credit_card'
+            ORDER BY transactions.id
+            """
+        ).fetchall()
+
+    finally:
+        connection.close()
+
+
 def get_transaction_by_plaid_id(
     plaid_transaction_id,
     connection=None,

@@ -1,7 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.accounts import get_account_balance
-from app.transactions import get_all_transactions
+from app.transactions import get_credit_card_transactions
 
 
 def to_money(value):
@@ -142,7 +142,7 @@ def build_credit_card_control_summary_from_database(
 ):
     """Build the control summary using stored database values."""
 
-    transactions = get_all_transactions()
+    transactions = get_credit_card_transactions()
 
     ap_balance = get_account_balance(
         ap_account_id
