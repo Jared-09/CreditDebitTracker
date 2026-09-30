@@ -92,14 +92,20 @@ def process_plaid_sync_batch(
     account_id,
     added,
     modified=None,
+    removed=None,
 ):
-    """Process added and modified transactions from one Plaid sync batch."""
+    """Process added, modified, and removed Plaid transactions."""
 
     if modified is None:
         modified = []
 
+    if removed is None:
+        removed = []
+
     transaction_ids = []
 
+    # Process added transactions first so posted purchases
+    # can reconcile with their existing pending records.
     for transaction in added:
         transaction_id = process_plaid_transaction(
             account_id=account_id,
@@ -116,6 +122,7 @@ def process_plaid_sync_batch(
 
         transaction_ids.append(transaction_id)
 
+    # Apply updates to existing transactions.
     for transaction in modified:
         transaction_id = process_modified_plaid_transaction(
             plaid_transaction_id=transaction["plaid_transaction_id"],
@@ -130,5 +137,13 @@ def process_plaid_sync_batch(
         )
 
         transaction_ids.append(transaction_id)
+
+    # Process removals last. If an old pending transaction
+    # was reconciled above, its old Plaid ID no longer exists,
+    # so removing that ID will not delete the posted purchase.
+    for transaction in removed:
+        process_removed_plaid_transaction(
+            plaid_transaction_id=transaction["plaid_transaction_id"]
+        )
 
     return transaction_ids
