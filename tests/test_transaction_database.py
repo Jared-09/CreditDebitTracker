@@ -3,6 +3,7 @@ from app.accounts import add_account
 from app.transactions import (
     add_transaction,
     get_all_transactions,
+    get_transaction_by_plaid_id,
     mark_transaction_posted,
     set_manual_amount,
 )
@@ -73,3 +74,36 @@ def test_pending_gas_transaction_lifecycle(test_database):
     )
 
     assert posted_effective_amount == 48.10
+
+
+def test_get_transaction_by_plaid_id(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    transaction_id = add_transaction(
+        account_id=account_id,
+        merchant_name="Test Restaurant",
+        description="Dinner",
+        transaction_date="2026-09-29",
+        plaid_amount=60.00,
+        pending=True,
+        plaid_transaction_id="test_restaurant_001",
+    )
+
+    transaction = get_transaction_by_plaid_id("test_restaurant_001")
+
+    assert transaction is not None
+    assert transaction[0] == transaction_id
+    assert transaction[2] == "test_restaurant_001"
+    assert transaction[4] == "Test Restaurant"
+    assert transaction[7] == 60.00
+
+    missing_transaction = get_transaction_by_plaid_id(
+        "this_id_does_not_exist"
+    )
+
+    assert missing_transaction is None

@@ -80,6 +80,35 @@ def get_all_transactions():
     return transactions
 
 
+def get_transaction_by_plaid_id(plaid_transaction_id):
+    """Return a transaction with the given Plaid transaction ID."""
+    connection = get_connection()
+
+    transaction = connection.execute(
+        """
+        SELECT
+            id,
+            account_id,
+            plaid_transaction_id,
+            pending_transaction_id,
+            merchant_name,
+            description,
+            transaction_date,
+            plaid_amount,
+            manual_amount,
+            pending,
+            transaction_type
+        FROM transactions
+        WHERE plaid_transaction_id = ?
+        """,
+        (plaid_transaction_id,),
+    ).fetchone()
+
+    connection.close()
+
+    return transaction
+
+
 def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
     connection = get_connection()
