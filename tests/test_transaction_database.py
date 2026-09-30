@@ -275,3 +275,16 @@ def test_duplicate_plaid_transaction_is_not_added_twice(test_database):
     assert len(transactions) == 1
     assert transactions[0][2] == "duplicate_test_001"
     assert transactions[0][7] == 25.00
+
+
+def test_reconcile_returns_false_when_pending_transaction_is_missing(
+    test_database,
+):
+    reconciled = reconcile_posted_transaction(
+        plaid_transaction_id="posted_missing_001",
+        pending_transaction_id="pending_missing_001",
+        posted_amount=42.50,
+    )
+
+    assert reconciled is False
+    assert get_all_transactions() == []
