@@ -1,3 +1,7 @@
+from app.accounts import get_account_balance
+from app.transactions import get_all_transactions
+
+
 def get_effective_amount(
     plaid_amount,
     manual_amount,
@@ -111,3 +115,25 @@ def build_credit_card_control_summary(
         "still_needs_funding": transfer_needed,
         "transfer_to_ap": transfer_needed,
     }
+
+
+def build_credit_card_control_summary_from_database(
+    ap_account_id,
+):
+    """Build the funding summary using stored database values."""
+
+    transactions = get_all_transactions()
+
+    ap_balance = get_account_balance(
+        ap_account_id
+    )
+
+    if ap_balance is None:
+        raise ValueError(
+            "The AP account does not have a current balance."
+        )
+
+    return build_credit_card_control_summary(
+        transactions=transactions,
+        ap_balance=ap_balance,
+    )
