@@ -34,6 +34,9 @@ def process_plaid_transaction(
             plaid_transaction_id=plaid_transaction_id,
             pending_transaction_id=pending_transaction_id,
             posted_amount=plaid_amount,
+            merchant_name=merchant_name,
+            description=description,
+            transaction_date=transaction_date,
             connection=connection,
         )
 

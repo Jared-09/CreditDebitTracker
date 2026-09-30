@@ -288,9 +288,12 @@ def mark_transaction_posted(
     transaction_id,
     posted_amount,
     plaid_transaction_id=None,
+    merchant_name=None,
+    description=None,
+    transaction_date=None,
     connection=None,
 ):
-    """Mark a transaction posted, optionally using an existing connection."""
+    """Mark a transaction posted and store its final Plaid details."""
 
     owns_connection = connection is None
 
@@ -303,7 +306,22 @@ def mark_transaction_posted(
             UPDATE transactions
             SET
                 plaid_amount = ?,
-                plaid_transaction_id = COALESCE(?, plaid_transaction_id),
+                plaid_transaction_id = COALESCE(
+                    ?,
+                    plaid_transaction_id
+                ),
+                merchant_name = COALESCE(
+                    ?,
+                    merchant_name
+                ),
+                description = COALESCE(
+                    ?,
+                    description
+                ),
+                transaction_date = COALESCE(
+                    ?,
+                    transaction_date
+                ),
                 pending = 0,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -311,6 +329,9 @@ def mark_transaction_posted(
             (
                 posted_amount,
                 plaid_transaction_id,
+                merchant_name,
+                description,
+                transaction_date,
                 transaction_id,
             ),
         )
@@ -337,6 +358,9 @@ def reconcile_posted_transaction(
     plaid_transaction_id,
     pending_transaction_id,
     posted_amount,
+    merchant_name=None,
+    description=None,
+    transaction_date=None,
     connection=None,
 ):
     """Reconcile a posted transaction with its pending record."""
@@ -353,6 +377,9 @@ def reconcile_posted_transaction(
         transaction_id=pending_transaction[0],
         posted_amount=posted_amount,
         plaid_transaction_id=plaid_transaction_id,
+        merchant_name=merchant_name,
+        description=description,
+        transaction_date=transaction_date,
         connection=connection,
     )
 
