@@ -251,45 +251,62 @@ def mark_transaction_posted(
     transaction_id,
     posted_amount,
     plaid_transaction_id=None,
+    connection=None,
 ):
-    """Update a pending transaction when its final posted amount becomes known."""
+    """Mark a transaction posted, optionally using an existing connection."""
 
-    connection = get_connection()
+    owns_connection = connection is None
 
-    cursor = connection.execute(
-        """
-        UPDATE transactions
-        SET
-            plaid_amount = ?,
-            plaid_transaction_id = COALESCE(?, plaid_transaction_id),
-            pending = 0,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """,
-        (
-            posted_amount,
-            plaid_transaction_id,
-            transaction_id,
-        ),
-    )
+    if owns_connection:
+        connection = get_connection()
 
-    if cursor.rowcount != 1:
-        connection.close()
-        raise ValueError(f"Transaction {transaction_id} was not found.")
+    try:
+        cursor = connection.execute(
+            """
+            UPDATE transactions
+            SET
+                plaid_amount = ?,
+                plaid_transaction_id = COALESCE(?, plaid_transaction_id),
+                pending = 0,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                posted_amount,
+                plaid_transaction_id,
+                transaction_id,
+            ),
+        )
 
-    connection.commit()
-    connection.close()
+        if cursor.rowcount != 1:
+            raise ValueError(
+                f"Transaction {transaction_id} was not found."
+            )
+
+        if owns_connection:
+            connection.commit()
+
+    except Exception:
+        if owns_connection:
+            connection.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            connection.close()
 
 
 def reconcile_posted_transaction(
     plaid_transaction_id,
     pending_transaction_id,
     posted_amount,
+    connection=None,
 ):
     """Reconcile a posted transaction with its pending record."""
 
     pending_transaction = get_transaction_by_plaid_id(
-        pending_transaction_id
+        pending_transaction_id,
+        connection=connection,
     )
 
     if pending_transaction is None:
@@ -299,6 +316,7 @@ def reconcile_posted_transaction(
         transaction_id=pending_transaction[0],
         posted_amount=posted_amount,
         plaid_transaction_id=plaid_transaction_id,
+        connection=connection,
     )
 
     return True
