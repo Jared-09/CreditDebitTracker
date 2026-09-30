@@ -66,6 +66,7 @@ def add_transaction(
 
 def get_all_transactions():
     """Return all transactions stored in the database."""
+
     connection = get_connection()
 
     try:
@@ -303,21 +304,36 @@ def reconcile_posted_transaction(
     return True
 
 
-def remove_transaction_by_plaid_id(plaid_transaction_id):
-    """Remove a transaction using its Plaid transaction ID."""
+def remove_transaction_by_plaid_id(
+    plaid_transaction_id,
+    connection=None,
+):
+    """Remove a Plaid transaction, optionally using an existing connection."""
 
-    connection = get_connection()
+    owns_connection = connection is None
 
-    cursor = connection.execute(
-        """
-        DELETE FROM transactions
-        WHERE plaid_transaction_id = ?
-        """,
-        (plaid_transaction_id,),
-    )
+    if owns_connection:
+        connection = get_connection()
 
-    connection.commit()
-    removed = cursor.rowcount == 1
-    connection.close()
+    try:
+        cursor = connection.execute(
+            """
+            DELETE FROM transactions
+            WHERE plaid_transaction_id = ?
+            """,
+            (plaid_transaction_id,),
+        )
 
-    return removed
+        if owns_connection:
+            connection.commit()
+
+        return cursor.rowcount == 1
+
+    except Exception:
+        if owns_connection:
+            connection.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            connection.close()
