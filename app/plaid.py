@@ -4,6 +4,18 @@ from decimal import Decimal, ROUND_HALF_UP
 import plaid
 from dotenv import load_dotenv
 from plaid.api import plaid_api
+from plaid.model.item_public_token_exchange_request import (
+    ItemPublicTokenExchangeRequest,
+)
+from plaid.model.products import Products
+from plaid.model.sandbox_public_token_create_request import (
+    SandboxPublicTokenCreateRequest,
+)
+
+
+# Load local environment variables once when this module is imported.
+# Existing environment variables are not overwritten.
+load_dotenv()
 
 
 VALID_PLAID_ENVIRONMENTS = {
@@ -13,9 +25,7 @@ VALID_PLAID_ENVIRONMENTS = {
 
 
 def get_plaid_config():
-    """Load and validate Plaid configuration."""
-
-    load_dotenv()
+    """Read and validate Plaid configuration."""
 
     client_id = os.getenv("PLAID_CLIENT_ID")
     secret = os.getenv("PLAID_SECRET")
@@ -71,6 +81,43 @@ def create_plaid_client():
     return plaid_api.PlaidApi(
         api_client
     )
+
+
+def create_sandbox_public_token(client):
+    """Create a Transactions Item in Plaid Sandbox."""
+
+    request = SandboxPublicTokenCreateRequest(
+        institution_id="ins_109508",
+        initial_products=[
+            Products("transactions"),
+        ],
+    )
+
+    response = client.sandbox_public_token_create(
+        request
+    )
+
+    return response.public_token
+
+
+def exchange_public_token(
+    client,
+    public_token,
+):
+    """Exchange a Plaid public token for an access token."""
+
+    request = ItemPublicTokenExchangeRequest(
+        public_token=public_token,
+    )
+
+    response = client.item_public_token_exchange(
+        request
+    )
+
+    return {
+        "access_token": response.access_token,
+        "item_id": response.item_id,
+    }
 
 
 def normalize_plaid_amount(plaid_amount):
