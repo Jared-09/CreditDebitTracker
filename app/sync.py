@@ -17,6 +17,7 @@ def process_plaid_transaction(
     plaid_amount,
     pending,
     pending_transaction_id=None,
+    transaction_type="purchase",
     connection=None,
 ):
     """Process one added transaction received from Plaid."""
@@ -56,6 +57,7 @@ def process_plaid_transaction(
         transaction_date=transaction_date,
         plaid_amount=plaid_amount,
         pending=pending,
+        transaction_type=transaction_type,
         pending_transaction_id=pending_transaction_id,
         connection=connection,
     )
@@ -69,6 +71,7 @@ def process_modified_plaid_transaction(
     plaid_amount,
     pending,
     pending_transaction_id=None,
+    transaction_type=None,
     connection=None,
 ):
     """Process one modified transaction received from Plaid."""
@@ -81,6 +84,7 @@ def process_modified_plaid_transaction(
         plaid_amount=plaid_amount,
         pending=pending,
         pending_transaction_id=pending_transaction_id,
+        transaction_type=transaction_type,
         connection=connection,
     )
 
@@ -140,6 +144,10 @@ def process_plaid_sync_batch(
                 pending_transaction_id=transaction.get(
                     "pending_transaction_id"
                 ),
+                transaction_type=transaction.get(
+                    "transaction_type",
+                    "purchase",
+                ),
                 connection=connection,
             )
 
@@ -160,6 +168,9 @@ def process_plaid_sync_batch(
                 pending=transaction["pending"],
                 pending_transaction_id=transaction.get(
                     "pending_transaction_id"
+                ),
+                transaction_type=transaction.get(
+                    "transaction_type"
                 ),
                 connection=connection,
             )

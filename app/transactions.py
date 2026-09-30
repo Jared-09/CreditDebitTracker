@@ -1,6 +1,22 @@
 from app.database import get_connection
 
 
+VALID_TRANSACTION_TYPES = {
+    "purchase",
+    "payment",
+    "refund",
+}
+
+
+def validate_transaction_type(transaction_type):
+    """Reject transaction types the accounting engine does not understand."""
+
+    if transaction_type not in VALID_TRANSACTION_TYPES:
+        raise ValueError(
+            f"Invalid transaction type: {transaction_type}"
+        )
+
+
 def add_transaction(
     account_id,
     merchant_name,
@@ -14,6 +30,8 @@ def add_transaction(
     connection=None,
 ):
     """Add a transaction, optionally using an existing connection."""
+
+    validate_transaction_type(transaction_type)
 
     owns_connection = connection is None
 
@@ -176,6 +194,8 @@ def add_plaid_transaction(
 ):
     """Add a Plaid transaction only if it is not already stored."""
 
+    validate_transaction_type(transaction_type)
+
     existing_transaction = get_transaction_by_plaid_id(
         plaid_transaction_id,
         connection=connection,
@@ -206,9 +226,13 @@ def update_plaid_transaction(
     plaid_amount,
     pending,
     pending_transaction_id=None,
+    transaction_type=None,
     connection=None,
 ):
     """Update a Plaid transaction, optionally using an existing connection."""
+
+    if transaction_type is not None:
+        validate_transaction_type(transaction_type)
 
     owns_connection = connection is None
 
@@ -226,6 +250,10 @@ def update_plaid_transaction(
                 transaction_date = ?,
                 plaid_amount = ?,
                 pending = ?,
+                transaction_type = COALESCE(
+                    ?,
+                    transaction_type
+                ),
                 updated_at = CURRENT_TIMESTAMP
             WHERE plaid_transaction_id = ?
             """,
@@ -236,6 +264,7 @@ def update_plaid_transaction(
                 transaction_date,
                 plaid_amount,
                 int(pending),
+                transaction_type,
                 plaid_transaction_id,
             ),
         )
