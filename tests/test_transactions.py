@@ -1,4 +1,7 @@
+import pytest
+
 from app.accounting import get_effective_amount
+from app.transactions import set_manual_amount
 
 
 def test_pending_transaction_without_manual_override():
@@ -29,3 +32,11 @@ def test_posted_transaction_uses_plaid_amount():
     )
 
     assert effective_amount == 48.10
+
+
+def test_manual_amount_invalid_transaction():
+    with pytest.raises(ValueError):
+        set_manual_amount(
+            transaction_id=999999,
+            manual_amount=47.36,
+        )

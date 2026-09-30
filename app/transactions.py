@@ -84,7 +84,7 @@ def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
     connection = get_connection()
 
-    connection.execute(
+    cursor = connection.execute(
         """
         UPDATE transactions
         SET
@@ -94,6 +94,10 @@ def set_manual_amount(transaction_id, manual_amount):
         """,
         (manual_amount, transaction_id),
     )
+
+    if cursor.rowcount != 1:
+        connection.close()
+        raise ValueError(f"Transaction {transaction_id} was not found.")
 
     connection.commit()
     connection.close()
