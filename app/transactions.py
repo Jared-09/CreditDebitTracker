@@ -142,6 +142,52 @@ def add_plaid_transaction(
     )
 
 
+def update_plaid_transaction(
+    plaid_transaction_id,
+    merchant_name,
+    description,
+    transaction_date,
+    plaid_amount,
+    pending,
+    pending_transaction_id=None,
+):
+    """Update an existing transaction using current Plaid data."""
+    connection = get_connection()
+
+    cursor = connection.execute(
+        """
+        UPDATE transactions
+        SET
+            pending_transaction_id = ?,
+            merchant_name = ?,
+            description = ?,
+            transaction_date = ?,
+            plaid_amount = ?,
+            pending = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE plaid_transaction_id = ?
+        """,
+        (
+            pending_transaction_id,
+            merchant_name,
+            description,
+            transaction_date,
+            plaid_amount,
+            int(pending),
+            plaid_transaction_id,
+        ),
+    )
+
+    if cursor.rowcount != 1:
+        connection.close()
+        raise ValueError(
+            f"Plaid transaction {plaid_transaction_id} was not found."
+        )
+
+    connection.commit()
+    connection.close()
+
+
 def set_manual_amount(transaction_id, manual_amount):
     """Set a manual amount override for a transaction."""
     connection = get_connection()

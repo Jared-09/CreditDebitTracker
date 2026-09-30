@@ -9,6 +9,7 @@ from app.transactions import (
     reconcile_posted_transaction,
     remove_transaction_by_plaid_id,
     set_manual_amount,
+    update_plaid_transaction,
 )
 
 
@@ -288,3 +289,58 @@ def test_reconcile_returns_false_when_pending_transaction_is_missing(
 
     assert reconciled is False
     assert get_all_transactions() == []
+
+
+def test_update_plaid_transaction_preserves_manual_amount(
+    test_database,
+):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    transaction_id = add_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="modified_gas_001",
+        merchant_name="Test Gas Station",
+        description="Gas authorization",
+        transaction_date="2026-09-29",
+        plaid_amount=1.00,
+        pending=True,
+    )
+
+    set_manual_amount(
+        transaction_id=transaction_id,
+        manual_amount=47.36,
+    )
+
+    update_plaid_transaction(
+        plaid_transaction_id="modified_gas_001",
+        merchant_name="Test Gas Station",
+        description="Gas purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=46.82,
+        pending=True,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+
+    transaction = transactions[0]
+
+    assert transaction[2] == "modified_gas_001"
+    assert transaction[5] == "Gas purchase"
+    assert transaction[7] == 46.82
+    assert transaction[8] == 47.36
+    assert bool(transaction[9]) is True
+
+    effective_amount = get_effective_amount(
+        plaid_amount=transaction[7],
+        manual_amount=transaction[8],
+        pending=transaction[9],
+    )
+
+    assert effective_amount == 47.36
