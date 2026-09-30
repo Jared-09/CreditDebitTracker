@@ -2,6 +2,7 @@ from app.accounts import add_account
 from app.sync import (
     process_modified_plaid_transaction,
     process_plaid_transaction,
+    process_removed_plaid_transaction,
 )
 from app.transactions import get_all_transactions
 
@@ -196,3 +197,34 @@ def test_process_modified_plaid_transaction(test_database):
     assert transaction[5] == "Updated purchase"
     assert transaction[7] == 27.50
     assert bool(transaction[9]) is False
+
+
+def test_process_removed_plaid_transaction(test_database):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="sync_removed_001",
+        merchant_name="Test Hotel",
+        description="Authorization hold",
+        transaction_date="2026-09-29",
+        plaid_amount=100.00,
+        pending=True,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+    assert transactions[0][7] == 100.00
+
+    removed = process_removed_plaid_transaction(
+        plaid_transaction_id="sync_removed_001"
+    )
+
+    assert removed is True
+    assert get_all_transactions() == []

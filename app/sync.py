@@ -2,6 +2,7 @@ from app.transactions import (
     add_plaid_transaction,
     get_transaction_by_plaid_id,
     reconcile_posted_transaction,
+    remove_transaction_by_plaid_id,
     update_plaid_transaction,
 )
 
@@ -77,3 +78,11 @@ def process_modified_plaid_transaction(
     )
 
     return transaction[0]
+
+
+def process_removed_plaid_transaction(plaid_transaction_id):
+    """Process one removed transaction received from Plaid."""
+
+    return remove_transaction_by_plaid_id(
+        plaid_transaction_id
+    )
