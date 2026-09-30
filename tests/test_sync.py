@@ -118,3 +118,37 @@ def test_process_pending_transaction_becoming_posted(
     assert transaction[2] == "sync_restaurant_posted_001"
     assert transaction[7] == 72.00
     assert bool(transaction[9]) is False
+
+
+def test_process_posted_transaction_when_pending_is_missing(
+    test_database,
+):
+    account_id = add_account(
+        name="Test Credit Card",
+        institution="Test Bank",
+        account_type="credit_card",
+        last_four="1234",
+    )
+
+    transaction_id = process_plaid_transaction(
+        account_id=account_id,
+        plaid_transaction_id="sync_missing_posted_001",
+        pending_transaction_id="sync_missing_pending_001",
+        merchant_name="Test Merchant",
+        description="Purchase",
+        transaction_date="2026-09-29",
+        plaid_amount=42.50,
+        pending=False,
+    )
+
+    transactions = get_all_transactions()
+
+    assert len(transactions) == 1
+
+    transaction = transactions[0]
+
+    assert transaction[0] == transaction_id
+    assert transaction[2] == "sync_missing_posted_001"
+    assert transaction[3] == "sync_missing_pending_001"
+    assert transaction[7] == 42.50
+    assert bool(transaction[9]) is False
