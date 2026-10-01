@@ -2,11 +2,11 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+
 DATABASE_PATH = Path("data") / "credit_card_control.db"
 
 
 def get_connection():
-    """Create and return a connection to the SQLite database."""
     connection = sqlite3.connect(DATABASE_PATH)
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
@@ -14,12 +14,6 @@ def get_connection():
 
 @contextmanager
 def database_transaction():
-    """
-    Manage a database transaction.
-    Commit all changes if successful.
-    Roll back all changes if an error occurs.
-    Always close the connection.
-    """
     connection = get_connection()
 
     try:
@@ -35,7 +29,6 @@ def database_transaction():
 
 
 def initialize_database():
-    """Create the database tables and apply simple schema upgrades."""
     connection = get_connection()
 
     try:
@@ -54,34 +47,6 @@ def initialize_database():
             )
             """
         )
-
-        # Existing databases created before newer account fields
-        # were added need simple schema upgrades.
-        account_columns = connection.execute(
-            "PRAGMA table_info(accounts)"
-        ).fetchall()
-
-        column_names = {
-            column[1]
-            for column in account_columns
-        }
-
-        if "current_balance" not in column_names:
-            connection.execute(
-                """
-                ALTER TABLE accounts
-                ADD COLUMN current_balance REAL
-                """
-            )
-
-        if "account_role" not in column_names:
-            connection.execute(
-                """
-                ALTER TABLE accounts
-                ADD COLUMN account_role TEXT
-                NOT NULL DEFAULT 'other'
-                """
-            )
 
         connection.execute(
             """
@@ -103,6 +68,61 @@ def initialize_database():
             )
             """
         )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS plaid_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id TEXT NOT NULL UNIQUE,
+                access_token TEXT NOT NULL,
+                sync_cursor TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS plaid_item_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id TEXT NOT NULL,
+                account_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_id)
+                    REFERENCES accounts(id),
+                FOREIGN KEY (item_id)
+                    REFERENCES plaid_items(item_id),
+                UNIQUE(item_id, account_id)
+            )
+            """
+        )
+
+        # Migrate older databases that were created before
+        # current_balance and account_role were added.
+
+        account_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(accounts)"
+            ).fetchall()
+        }
+
+        if "current_balance" not in account_columns:
+            connection.execute(
+                """
+                ALTER TABLE accounts
+                ADD COLUMN current_balance REAL
+                """
+            )
+
+        if "account_role" not in account_columns:
+            connection.execute(
+                """
+                ALTER TABLE accounts
+                ADD COLUMN account_role TEXT NOT NULL DEFAULT 'other'
+                """
+            )
 
         connection.commit()
 

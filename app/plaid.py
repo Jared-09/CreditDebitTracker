@@ -4,8 +4,18 @@ from decimal import Decimal, ROUND_HALF_UP
 import plaid
 from dotenv import load_dotenv
 from plaid.api import plaid_api
+from plaid.model.accounts_balance_get_request import (
+    AccountsBalanceGetRequest,
+)
+from plaid.model.country_code import CountryCode
 from plaid.model.item_public_token_exchange_request import (
     ItemPublicTokenExchangeRequest,
+)
+from plaid.model.link_token_create_request import (
+    LinkTokenCreateRequest,
+)
+from plaid.model.link_token_create_request_user import (
+    LinkTokenCreateRequestUser,
 )
 from plaid.model.products import Products
 from plaid.model.sandbox_public_token_create_request import (
@@ -13,8 +23,6 @@ from plaid.model.sandbox_public_token_create_request import (
 )
 
 
-# Load local environment variables once when this module is imported.
-# Existing environment variables are not overwritten.
 load_dotenv()
 
 
@@ -83,6 +91,36 @@ def create_plaid_client():
     )
 
 
+def create_link_token(
+    client,
+    client_user_id="credit-card-control-user",
+):
+    """
+    Create a Plaid Link token for connecting a
+    financial institution.
+    """
+
+    request = LinkTokenCreateRequest(
+        user=LinkTokenCreateRequestUser(
+            client_user_id=client_user_id,
+        ),
+        client_name="Credit Card Control",
+        products=[
+            Products("transactions"),
+        ],
+        country_codes=[
+            CountryCode("US"),
+        ],
+        language="en",
+    )
+
+    response = client.link_token_create(
+        request
+    )
+
+    return response.link_token
+
+
 def create_sandbox_public_token(client):
     """Create a Transactions Item in Plaid Sandbox."""
 
@@ -120,6 +158,73 @@ def exchange_public_token(
     }
 
 
+def get_plaid_account_balances(
+    client,
+    access_token,
+):
+    """
+    Retrieve current and available balances for all
+    accounts belonging to a Plaid Item.
+    """
+
+    request = AccountsBalanceGetRequest(
+        access_token=access_token,
+    )
+
+    response = client.accounts_balance_get(
+        request
+    )
+
+    accounts = getattr(
+        response,
+        "accounts",
+        None,
+    )
+
+    if not isinstance(
+        accounts,
+        (list, tuple),
+    ):
+        accounts = []
+
+    balances = []
+
+    for account in accounts:
+        current_balance = account.balances.current
+        available_balance = account.balances.available
+
+        balances.append(
+            {
+                "plaid_account_id": account.account_id,
+                "name": account.name,
+                "official_name": account.official_name,
+                "mask": getattr(
+                    account,
+                    "mask",
+                    None,
+                ),
+                "account_type": str(
+                    account.type
+                ),
+                "account_subtype": str(
+                    account.subtype
+                ),
+                "current_balance": (
+                    float(current_balance)
+                    if current_balance is not None
+                    else None
+                ),
+                "available_balance": (
+                    float(available_balance)
+                    if available_balance is not None
+                    else None
+                ),
+            }
+        )
+
+    return balances
+
+
 def normalize_plaid_amount(plaid_amount):
     """
     Convert a signed Plaid amount into the positive
@@ -154,7 +259,9 @@ def classify_plaid_transaction(
     return "refund"
 
 
-def convert_plaid_transaction(plaid_transaction):
+def convert_plaid_transaction(
+    plaid_transaction,
+):
     """
     Convert a raw Plaid transaction into the format
     expected by the application's sync system.
@@ -167,28 +274,34 @@ def convert_plaid_transaction(plaid_transaction):
     primary_category = None
 
     if personal_finance_category is not None:
-        primary_category = personal_finance_category.get(
-            "primary"
+        primary_category = (
+            personal_finance_category.get(
+                "primary"
+            )
         )
 
     plaid_amount = plaid_transaction["amount"]
 
     return {
-        "plaid_transaction_id": plaid_transaction[
-            "transaction_id"
-        ],
-        "pending_transaction_id": plaid_transaction.get(
-            "pending_transaction_id"
+        "plaid_transaction_id": (
+            plaid_transaction["transaction_id"]
         ),
-        "merchant_name": plaid_transaction.get(
-            "merchant_name"
+        "pending_transaction_id": (
+            plaid_transaction.get(
+                "pending_transaction_id"
+            )
         ),
-        "description": plaid_transaction.get(
-            "name"
+        "merchant_name": (
+            plaid_transaction.get(
+                "merchant_name"
+            )
         ),
-        "transaction_date": plaid_transaction[
-            "date"
-        ],
+        "description": (
+            plaid_transaction.get("name")
+        ),
+        "transaction_date": (
+            plaid_transaction["date"]
+        ),
         "plaid_amount": normalize_plaid_amount(
             plaid_amount
         ),

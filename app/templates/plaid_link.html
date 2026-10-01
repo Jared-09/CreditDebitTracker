@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Credit Card Control</title>
+
+    <script
+        src="https://cdn.plaid.com/link/v2/stable/link-initialize.js">
+    </script>
+</head>
+
+<body>
+
+    <h1>Credit Card Control</h1>
+
+    <p>
+        Connect a financial institution to Credit Card Control.
+    </p>
+
+    <button id="connect-button">
+        Connect Account
+    </button>
+
+    <p id="status"></p>
+
+    <script>
+        const button =
+            document.getElementById("connect-button");
+
+        const status =
+            document.getElementById("status");
+
+
+        async function createLinkToken() {
+
+            status.textContent =
+                "Preparing Plaid Link...";
+
+            const response =
+                await fetch(
+                    "/api/create_link_token",
+                    {
+                        method: "POST"
+                    }
+                );
+
+            if (!response.ok) {
+                throw new Error(
+                    "Could not create Link token."
+                );
+            }
+
+            const data =
+                await response.json();
+
+            return data.link_token;
+        }
+
+
+        async function exchangePublicToken(
+            publicToken
+        ) {
+
+            status.textContent =
+                "Saving connected account...";
+
+            const response =
+                await fetch(
+                    "/api/exchange_public_token",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            public_token:
+                                publicToken
+                        })
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    "Could not save Plaid connection."
+                );
+            }
+
+            return data;
+        }
+
+
+        button.addEventListener(
+            "click",
+            async function () {
+
+                button.disabled = true;
+
+                try {
+
+                    const linkToken =
+                        await createLinkToken();
+
+                    const handler =
+                        Plaid.create({
+
+                            token: linkToken,
+
+                            onSuccess:
+                                async function (
+                                    publicToken,
+                                    metadata
+                                ) {
+
+                                    try {
+
+                                        await exchangePublicToken(
+                                            publicToken
+                                        );
+
+                                        status.textContent =
+                                            "Account connected successfully.";
+
+                                    } catch (error) {
+
+                                        console.error(
+                                            error
+                                        );
+
+                                        status.textContent =
+                                            error.message;
+
+                                    }
+
+                                    button.disabled =
+                                        false;
+                                },
+
+                            onExit:
+                                function (
+                                    error,
+                                    metadata
+                                ) {
+
+                                    if (error) {
+                                        console.error(
+                                            error
+                                        );
+                                    }
+
+                                    status.textContent =
+                                        "Plaid Link closed.";
+
+                                    button.disabled =
+                                        false;
+                                }
+                        });
+
+                    handler.open();
+
+                } catch (error) {
+
+                    console.error(
+                        error
+                    );
+
+                    status.textContent =
+                        error.message;
+
+                    button.disabled =
+                        false;
+                }
+            }
+        );
+    </script>
+
+</body>
+</html>

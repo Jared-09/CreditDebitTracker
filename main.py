@@ -1,33 +1,43 @@
 from app.database import initialize_database
-from app.transactions import mark_transaction_posted, get_all_transactions
-from app.accounting import get_effective_amount
+
+from app.plaid import (
+    create_plaid_client,
+)
+
+from app.plaid_sync_all import (
+    sync_all_plaid_accounts,
+)
+
+from app.reporting import (
+    print_daily_report,
+)
 
 
 def main():
+
     initialize_database()
 
-    mark_transaction_posted(
-        transaction_id=1,
-        posted_amount=48.10,
+    print()
+    print("================================")
+    print("Credit Card Control")
+    print("================================")
+    print()
+
+    print("Syncing accounts...")
+
+    client = create_plaid_client()
+
+    results = sync_all_plaid_accounts(
+        client
     )
 
-    transactions = get_all_transactions()
+    print(
+        f"Synced accounts: {len(results)}"
+    )
 
-    for transaction in transactions:
-        plaid_amount = transaction[7]
-        manual_amount = transaction[8]
-        pending = transaction[9]
+    print()
 
-        effective_amount = get_effective_amount(
-            plaid_amount,
-            manual_amount,
-            pending,
-        )
-
-        print("Plaid amount:", plaid_amount)
-        print("Manual amount:", manual_amount)
-        print("Pending:", bool(pending))
-        print("Effective amount:", effective_amount)
+    print_daily_report()
 
 
 if __name__ == "__main__":
