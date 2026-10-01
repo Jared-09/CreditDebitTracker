@@ -180,9 +180,7 @@ def set_account_role(
                 f"Account {account_id} was not found."
             )
 
-        if (
-            account_role in UNIQUE_ACCOUNT_ROLES
-        ):
+        if account_role in UNIQUE_ACCOUNT_ROLES:
             existing_account = connection.execute(
                 """
                 SELECT id
@@ -351,6 +349,42 @@ def get_account_by_plaid_account_id(
             return None
 
         return row[0]
+
+    finally:
+        connection.close()
+
+
+def update_account_institution(
+    account_id,
+    institution,
+):
+    """Update the institution name for an account."""
+
+    connection = get_connection()
+
+    try:
+        cursor = connection.execute(
+            """
+            UPDATE accounts
+            SET institution = ?
+            WHERE id = ?
+            """,
+            (
+                institution,
+                account_id,
+            ),
+        )
+
+        if cursor.rowcount != 1:
+            raise ValueError(
+                f"Account {account_id} was not found."
+            )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
 
     finally:
         connection.close()

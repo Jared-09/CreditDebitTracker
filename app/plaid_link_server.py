@@ -12,6 +12,7 @@ from app.plaid import (
     create_plaid_client,
     exchange_public_token,
     get_plaid_account_balances,
+    get_plaid_item_institution_name,
 )
 
 from app.plaid_account_registration import (
@@ -90,6 +91,13 @@ def api_exchange_public_token():
         access_token=result["access_token"],
     )
 
+    institution_name = (
+        get_plaid_item_institution_name(
+            client=client,
+            access_token=result["access_token"],
+        )
+    )
+
     plaid_accounts = (
         get_plaid_account_balances(
             client=client,
@@ -100,6 +108,7 @@ def api_exchange_public_token():
     register_plaid_accounts(
         item_id=result["item_id"],
         plaid_accounts=plaid_accounts,
+        institution_name=institution_name,
     )
 
     return jsonify(

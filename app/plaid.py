@@ -8,6 +8,9 @@ from plaid.model.accounts_balance_get_request import (
     AccountsBalanceGetRequest,
 )
 from plaid.model.country_code import CountryCode
+from plaid.model.item_get_request import (
+    ItemGetRequest,
+)
 from plaid.model.item_public_token_exchange_request import (
     ItemPublicTokenExchangeRequest,
 )
@@ -156,6 +159,37 @@ def exchange_public_token(
         "access_token": response.access_token,
         "item_id": response.item_id,
     }
+
+
+def get_plaid_item_institution_name(
+    client,
+    access_token,
+):
+    """
+    Retrieve the institution name associated with
+    a Plaid Item.
+    """
+
+    request = ItemGetRequest(
+        access_token=access_token,
+    )
+
+    response = client.item_get(
+        request
+    )
+
+    item = response.item
+
+    institution_name = getattr(
+        item,
+        "institution_name",
+        None,
+    )
+
+    if institution_name is None:
+        return "Unknown Institution"
+
+    return institution_name
 
 
 def get_plaid_account_balances(

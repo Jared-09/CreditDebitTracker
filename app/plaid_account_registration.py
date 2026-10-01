@@ -1,7 +1,8 @@
 from app.accounts import (
     add_account,
-    get_all_accounts,
+    get_account_by_plaid_account_id,
     set_account_balance,
+    update_account_institution,
 )
 from app.plaid_items import (
     link_plaid_account_to_local_account,
@@ -39,24 +40,10 @@ def determine_account_type(
     return account_type
 
 
-def find_local_account_by_plaid_id(
-    plaid_account_id,
-):
-    """
-    Find an existing local account using its
-    Plaid account ID.
-    """
-
-    for account in get_all_accounts():
-        if account[4] == plaid_account_id:
-            return account
-
-    return None
-
-
 def register_plaid_accounts(
     item_id,
     plaid_accounts,
+    institution_name="Unknown Institution",
 ):
     """
     Register or update all accounts belonging to a
@@ -73,8 +60,10 @@ def register_plaid_accounts(
             "plaid_account_id"
         ]
 
-        existing = find_local_account_by_plaid_id(
-            plaid_account_id
+        existing_account_id = (
+            get_account_by_plaid_account_id(
+                plaid_account_id
+            )
         )
 
         account_type = determine_account_type(
@@ -85,10 +74,10 @@ def register_plaid_accounts(
             "current_balance"
         ]
 
-        if existing is None:
+        if existing_account_id is None:
             account_id = add_account(
                 name=plaid_account["name"],
-                institution="Plaid",
+                institution=institution_name,
                 account_type=account_type,
                 last_four=plaid_account.get(
                     "mask"
@@ -99,10 +88,16 @@ def register_plaid_accounts(
                     if account_type == "credit_card"
                     else "other"
                 ),
+                plaid_account_id=plaid_account_id,
             )
 
         else:
-            account_id = existing[0]
+            account_id = existing_account_id
+
+            update_account_institution(
+                account_id=account_id,
+                institution=institution_name,
+            )
 
             if current_balance is not None:
                 set_account_balance(
